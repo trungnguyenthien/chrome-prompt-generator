@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Generator</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Prompt Generator</h1>
+            <button id="openManager" class="btn btn-primary">
+                📝 Quản lý Template
+            </button>
+        </div>
+        
+        <div class="quick-actions">
+            <h2>Hành động nhanh</h2>
+            <button id="createFromPage" class="btn btn-secondary">
+                ✨ Tạo prompt từ trang này
+            </button>
+            <button id="openPromptModal" class="btn btn-secondary">
+                🎯 Sử dụng template
+            </button>
+        </div>
+        
+        <div class="recent-templates">
+            <h2>Template gần đây</h2>
+            <div id="recentList" class="template-list">
+                <!-- Recent templates will be loaded here -->
+            </div>
+        </div>
+        
+        <div class="footer">
+            <small>Nhấn vào icon để mở trình quản lý</small>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
