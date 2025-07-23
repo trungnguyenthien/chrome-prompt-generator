@@ -15,12 +15,6 @@ class ContentScript {
 
         // Add CSS for modal if not already added
         this.injectStyles();
-        
-        // Auto-show modal if triggered from context menu
-        // Check if this is a fresh injection (no existing modal)
-        if (!document.querySelector('.prompt-generator-modal')) {
-            this.showPromptModal();
-        }
     }
 
     async handleMessage(message, sender, sendResponse) {

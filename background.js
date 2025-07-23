@@ -24,10 +24,13 @@ class BackgroundService {
         // Handle context menu clicks
         chrome.contextMenus.onClicked.addListener((info, tab) => {
             if (info.menuItemId === 'use-template') {
-                // Inject content script to show template selector
+                // Inject content script and then show modal
                 chrome.scripting.executeScript({
                     target: { tabId: tab.id },
                     files: ['content.js']
+                }).then(() => {
+                    // Send message to show modal after script is injected
+                    chrome.tabs.sendMessage(tab.id, { action: 'showPromptModal' });
                 });
             }
         });
