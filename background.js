@@ -10,12 +10,40 @@ class BackgroundService {
             if (details.reason === 'install') {
                 this.setupDefaultData();
             }
+            // Create context menu
+            this.createContextMenu();
+        });
+
+        // Handle extension icon click - open manager page
+        chrome.action.onClicked.addListener((tab) => {
+            chrome.tabs.create({
+                url: chrome.runtime.getURL('manager.html')
+            });
+        });
+
+        // Handle context menu clicks
+        chrome.contextMenus.onClicked.addListener((info, tab) => {
+            if (info.menuItemId === 'use-template') {
+                // Inject content script to show template selector
+                chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    files: ['content.js']
+                });
+            }
         });
 
         // Handle messages from content scripts and popup
         chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             this.handleMessage(message, sender, sendResponse);
             return true; // Keep message channel open for async response
+        });
+    }
+
+    createContextMenu() {
+        chrome.contextMenus.create({
+            id: 'use-template',
+            title: 'Sử dụng Prompt Template',
+            contexts: ['editable', 'selection']
         });
     }
 
@@ -87,6 +115,46 @@ class BackgroundService {
                     sendResponse({ success: true });
                     break;
 
+                case 'openManager':
+                    chrome.tabs.create({
+                        url: chrome.runtime.getURL('manager.html')
+                    });
+                    sendResponse({ success: true });
+                    break;
+
+                case 'openCategories':
+                    chrome.tabs.create({
+                        url: chrome.runtime.getURL('categories.html')
+                    });
+                    sendResponse({ success: true });
+                    break;
+
+                // Categories management
+                case 'getCategories':
+                    const categories = await this.getCategories();
+                    sendResponse({ success: true, categories });
+                    break;
+
+                case 'saveCategory':
+                    const savedCategory = await this.saveCategory(message.category);
+                    sendResponse({ success: true, category: savedCategory });
+                    break;
+
+                case 'deleteCategory':
+                    await this.deleteCategory(message.categoryId);
+                    sendResponse({ success: true });
+                    break;
+
+                case 'getTemplateCountsByCategory':
+                    const templateCounts = await this.getTemplateCountsByCategory();
+                    sendResponse({ success: true, counts: templateCounts });
+                    break;
+
+                case 'getTemplateCountsByCategory':
+                    const counts = await this.getTemplateCountsByCategory();
+                    sendResponse({ counts });
+                    break;
+
                 default:
                     sendResponse({ error: 'Unknown action' });
             }
@@ -145,6 +213,96 @@ class BackgroundService {
             template.usageCount = (template.usageCount || 0) + 1;
             await chrome.storage.local.set({ promptTemplates: templates });
         }
+    }
+
+    // Categories management methods
+    async getCategories() {
+        const result = await chrome.storage.local.get(['categories']);
+        let categories = result.categories || [];
+        
+        // Ensure default category exists
+        const defaultExists = categories.find(cat => cat.id === 'general');
+        if (!defaultExists) {
+            const defaultCategory = {
+                id: 'general',
+                name: 'Chung',
+                description: 'Danh mục mặc định cho tất cả template',
+                color: 'gray',
+                isDefault: true,
+                createdAt: new Date().toISOString(),
+                templateCount: 0
+            };
+            categories.unshift(defaultCategory);
+            await chrome.storage.local.set({ categories });
+        }
+        
+        return categories;
+    }
+
+    async saveCategory(category) {
+        const result = await chrome.storage.local.get(['categories']);
+        const categories = result.categories || [];
+        
+        const existingIndex = categories.findIndex(cat => cat.id === category.id);
+        if (existingIndex !== -1) {
+            // Update existing category
+            categories[existingIndex] = {
+                ...categories[existingIndex],
+                ...category,
+                updatedAt: new Date().toISOString()
+            };
+        } else {
+            // Add new category
+            categories.push({
+                ...category,
+                createdAt: new Date().toISOString()
+            });
+        }
+        
+        await chrome.storage.local.set({ categories });
+        return category;
+    }
+
+    async deleteCategory(categoryId) {
+        // Cannot delete default category
+        if (categoryId === 'general') {
+            throw new Error('Cannot delete default category');
+        }
+        
+        const result = await chrome.storage.local.get(['categories', 'promptTemplates']);
+        const categories = result.categories || [];
+        const templates = result.promptTemplates || [];
+        
+        // Remove category
+        const filteredCategories = categories.filter(cat => cat.id !== categoryId);
+        
+        // Move templates from deleted category to 'general'
+        const updatedTemplates = templates.map(template => {
+            if (template.category === categoryId) {
+                return { ...template, category: 'general' };
+            }
+            return template;
+        });
+        
+        await chrome.storage.local.set({ 
+            categories: filteredCategories,
+            promptTemplates: updatedTemplates
+        });
+        
+        return { success: true };
+    }
+
+    async getTemplateCountsByCategory() {
+        const result = await chrome.storage.local.get(['promptTemplates']);
+        const templates = result.promptTemplates || [];
+        
+        const counts = {};
+        templates.forEach(template => {
+            const categoryId = template.category || 'general';
+            counts[categoryId] = (counts[categoryId] || 0) + 1;
+        });
+        
+        return counts;
     }
 
     generateId() {

@@ -11,9 +11,11 @@
         <header class="header">
             <div class="header-content">
                 <h1>🤖 Quản lý Prompt Template</h1>
-                <button id="createTemplate" class="btn btn-primary">
-                    ➕ Tạo Template Mới
-                </button>
+            </div>
+            <!-- Navigation -->
+            <div class="header-nav">
+                <a href="manager.html" class="nav-link active">Templates</a>
+                <button id="openCategoriesBtn" class="nav-link">Danh mục</button>
             </div>
         </header>
 
@@ -22,28 +24,10 @@
                 <input type="text" id="searchInput" placeholder="🔍 Tìm kiếm template..." />
                 <select id="categoryFilter">
                     <option value="">Tất cả danh mục</option>
-                    <option value="general">Chung</option>
-                    <option value="writing">Viết lách</option>
-                    <option value="coding">Lập trình</option>
-                    <option value="analysis">Phân tích</option>
-                    <option value="creative">Sáng tạo</option>
-                    <option value="business">Kinh doanh</option>
                 </select>
-            </div>
-
-            <div class="stats">
-                <div class="stat-card">
-                    <span class="stat-number" id="totalCount">0</span>
-                    <span class="stat-label">Tổng template</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="usedCount">0</span>
-                    <span class="stat-label">Đã sử dụng</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-number" id="todayCount">0</span>
-                    <span class="stat-label">Hôm nay</span>
-                </div>
+                <button id="createTemplate" class="btn btn-success">
+                    Tạo Template Mới
+                </button>
             </div>
 
             <div class="template-grid" id="templateGrid">
@@ -83,11 +67,6 @@
                     <label for="templateCategory">Danh mục</label>
                     <select id="templateCategory" name="templateCategory">
                         <option value="general">Chung</option>
-                        <option value="writing">Viết lách</option>
-                        <option value="coding">Lập trình</option>
-                        <option value="analysis">Phân tích</option>
-                        <option value="creative">Sáng tạo</option>
-                        <option value="business">Kinh doanh</option>
                     </select>
                 </div>
                 

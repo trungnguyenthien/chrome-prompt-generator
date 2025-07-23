@@ -3,16 +3,18 @@ class TemplateManager {
     constructor() {
         this.templates = [];
         this.filteredTemplates = [];
+        this.categories = [];
         this.currentEditingId = null;
         this.init();
     }
 
     async init() {
+        await this.loadCategories();
         await this.loadTemplates();
+        this.populateCategoryFilters();
         this.bindEvents();
         this.checkUrlParams();
         this.renderTemplates();
-        this.updateStats();
     }
 
     bindEvents() {
@@ -28,6 +30,11 @@ class TemplateManager {
 
         document.getElementById('categoryFilter').addEventListener('change', (e) => {
             this.filterTemplates(document.getElementById('searchInput').value, e.target.value);
+        });
+
+        // Navigation button
+        document.getElementById('openCategoriesBtn').addEventListener('click', () => {
+            this.openCategories();
         });
 
         // Modal events
@@ -103,6 +110,41 @@ class TemplateManager {
             console.error('Error loading templates:', error);
             this.templates = [];
             this.filteredTemplates = [];
+        }
+    }
+
+    async loadCategories() {
+        try {
+            const response = await chrome.runtime.sendMessage({ action: 'getCategories' });
+            this.categories = response.categories || [];
+        } catch (error) {
+            console.error('Error loading categories:', error);
+            this.categories = [];
+        }
+    }
+
+    populateCategoryFilters() {
+        const categoryFilter = document.getElementById('categoryFilter');
+        const templateCategory = document.getElementById('templateCategory');
+        
+        if (categoryFilter) {
+            categoryFilter.innerHTML = '<option value="">Tất cả danh mục</option>';
+            this.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                categoryFilter.appendChild(option);
+            });
+        }
+
+        if (templateCategory) {
+            templateCategory.innerHTML = '';
+            this.categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                templateCategory.appendChild(option);
+            });
         }
     }
 
@@ -303,7 +345,6 @@ class TemplateManager {
             
             // Update UI
             this.renderTemplates();
-            this.updateStats();
             this.hideTemplateModal();
             
             this.showNotification(this.currentEditingId ? 'Template đã được cập nhật!' : 'Template đã được tạo!');
@@ -354,7 +395,6 @@ class TemplateManager {
                 
                 // Update UI
                 this.renderTemplates();
-                this.updateStats();
                 this.hideDeleteModal();
                 this.showNotification('Template đã được xóa!');
             } catch (error) {
@@ -362,19 +402,6 @@ class TemplateManager {
                 this.showNotification('Có lỗi xảy ra khi xóa template!', 'error');
             }
         }
-    }
-
-    updateStats() {
-        const totalCount = this.templates.length;
-        const usedCount = this.templates.filter(t => t.usageCount > 0).length;
-        const today = new Date().toDateString();
-        const todayCount = this.templates.filter(t => {
-            return t.lastUsed && new Date(t.lastUsed).toDateString() === today;
-        }).length;
-
-        document.getElementById('totalCount').textContent = totalCount;
-        document.getElementById('usedCount').textContent = usedCount;
-        document.getElementById('todayCount').textContent = todayCount;
     }
 
     showNotification(message, type = 'success') {
@@ -411,16 +438,9 @@ class TemplateManager {
         }, 3000);
     }
 
-    getCategoryName(category) {
-        const names = {
-            general: 'Chung',
-            writing: 'Viết lách',
-            coding: 'Lập trình',
-            analysis: 'Phân tích',
-            creative: 'Sáng tạo',
-            business: 'Kinh doanh'
-        };
-        return names[category] || category;
+    getCategoryName(categoryId) {
+        const category = this.categories.find(cat => cat.id === categoryId);
+        return category ? category.name : 'Chung';
     }
 
     escapeHtml(text) {
@@ -720,7 +740,6 @@ class TemplateManager {
                 template.usageCount = (template.usageCount || 0) + 1;
                 template.lastUsed = Date.now();
                 await this.updateTemplate(template);
-                this.updateStats();
                 
                 closeModal();
             } catch (error) {
@@ -762,6 +781,16 @@ class TemplateManager {
         }
 
         return variables;
+    }
+
+    async openCategories() {
+        try {
+            await chrome.runtime.sendMessage({ action: 'openCategories' });
+        } catch (error) {
+            console.error('Error opening categories page:', error);
+            // Fallback to direct navigation if chrome extension API is not available
+            window.location.href = 'categories.html';
+        }
     }
 
     // ...existing code...

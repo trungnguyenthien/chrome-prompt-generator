@@ -6,11 +6,12 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs",
+    "contextMenus"
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_title": "Prompt Generator",
+    "default_title": "Prompt Generator - Quản lý Template",
     "default_icon": "iconP.png"
   },
   "icons": {
