@@ -210,14 +210,7 @@ class TemplateManager {
                     </span>
                 </div>
                 
-                <p class="template-description">${this.escapeHtml(template.description || 'Không có mô tả')}</p>
-                
                 <div class="template-content">${this.escapeHtml(template.content)}</div>
-                
-                <div class="template-meta">
-                    <span>Tạo: ${createdDate}</span>
-                    <span>Dùng: ${template.usageCount || 0} lần</span>
-                </div>
                 
                 <div class="template-actions">
                     <button class="btn btn-delete btn-small delete-btn" data-id="${template.id}">

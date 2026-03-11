@@ -12,7 +12,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: none;
     margin: 0 auto;
     min-height: 100vh;
     display: flex;
@@ -24,7 +24,7 @@ body {
 }
 
 .header-content {
-    max-width: 1200px;
+    max-width: none;
     margin: 0 auto;
     padding: 0 20px;
     display: flex;
@@ -144,18 +144,19 @@ body {
 
 .template-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, 300px);
+    gap: 10px;
 }
 
 .template-card {
     background: white;
-    border-radius: 12px;
+    border-radius: 0;
     padding: 20px;
     box-shadow: 0 4px 15px rgba(0,0,0,0.1);
     transition: all 0.2s ease;
     position: relative;
     overflow: hidden;
+    width: 300px;
 }
 
 .template-card:hover {
@@ -218,19 +219,11 @@ body {
     font-size: 13px;
     color: #555;
     margin-bottom: 15px;
-    max-height: 80px;
-    overflow: hidden;
+    height: 300px;
+    overflow-y: auto;
     position: relative;
-}
-
-.template-content::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: linear-gradient(transparent, #f8f9fa);
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .template-meta {
