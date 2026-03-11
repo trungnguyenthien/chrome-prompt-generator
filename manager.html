@@ -16,6 +16,8 @@
             <div class="header-nav">
                 <a href="manager.html" class="nav-link active">Templates</a>
                 <button id="openCategoriesBtn" class="nav-link">Danh mục</button>
+                <button id="openImportBtn" class="nav-link">📥 Import</button>
+                <button id="openExportBtn" class="nav-link">📤 Export</button>
             </div>
         </header>
 
@@ -102,6 +104,64 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" id="cancelDelete">Hủy</button>
                 <button type="button" class="btn btn-danger" id="confirmDelete">Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Panel -->
+    <div id="exportPanel" class="panel-overlay" style="display:none">
+        <div class="panel-container">
+            <div class="panel-header">
+                <h2>📤 Export Prompts</h2>
+                <button class="close-btn" id="closeExportPanel">&times;</button>
+            </div>
+            <div class="panel-toolbar">
+                <label class="select-all-label">
+                    <input type="checkbox" id="exportSelectAll"> Chọn tất cả
+                </label>
+                <span id="exportCountLabel" class="selection-count">0 template được chọn</span>
+                <button id="doExportBtn" class="btn btn-primary" disabled>📤 Export file JSON</button>
+            </div>
+            <div id="exportTemplateList" class="selectable-template-list"></div>
+        </div>
+    </div>
+
+    <!-- Import Panel -->
+    <div id="importPanel" class="panel-overlay" style="display:none">
+        <div class="panel-container">
+            <!-- Step 1: File select -->
+            <div id="importStep1">
+                <div class="panel-header">
+                    <h2>📥 Import Prompts</h2>
+                    <button class="close-btn" id="closeImportPanel">&times;</button>
+                </div>
+                <div class="file-drop-zone" id="importDropZone">
+                    <div class="drop-icon">📂</div>
+                    <p>Kéo thả file JSON vào đây</p>
+                    <p class="drop-or">hoặc</p>
+                    <label class="btn btn-primary file-pick-label">
+                        Chọn file JSON
+                        <input type="file" id="importFileInput" accept=".json">
+                    </label>
+                    <p class="drop-hint">Chỉ hỗ trợ file .json được export từ extension này</p>
+                </div>
+            </div>
+
+            <!-- Step 2: Template list -->
+            <div id="importStep2" style="display:none">
+                <div class="panel-header">
+                    <button class="btn btn-secondary btn-small" id="backToImportStep1">← Quay lại</button>
+                    <h2>📥 Chọn template để import</h2>
+                    <button class="close-btn" id="closeImportPanel2">&times;</button>
+                </div>
+                <div class="panel-toolbar">
+                    <label class="select-all-label">
+                        <input type="checkbox" id="importSelectAll"> Chọn tất cả
+                    </label>
+                    <span id="importCountLabel" class="selection-count">0 template được chọn</span>
+                    <button id="doImportBtn" class="btn btn-primary" disabled>📥 Import đã chọn</button>
+                </div>
+                <div id="importTemplateList" class="selectable-template-list"></div>
             </div>
         </div>
     </div>

@@ -37,6 +37,16 @@ class TemplateManager {
             this.openCategories();
         });
 
+        // Export button
+        document.getElementById('openExportBtn').addEventListener('click', () => {
+            this.showExportPanel();
+        });
+
+        // Import button
+        document.getElementById('openImportBtn').addEventListener('click', () => {
+            this.showImportPanel();
+        });
+
         // Modal events
         const closeModalBtn = document.getElementById('closeModal');
         const cancelBtn = document.getElementById('cancelBtn');
@@ -788,12 +798,291 @@ class TemplateManager {
             await chrome.runtime.sendMessage({ action: 'openCategories' });
         } catch (error) {
             console.error('Error opening categories page:', error);
-            // Fallback to direct navigation if chrome extension API is not available
             window.location.href = 'categories.html';
         }
     }
 
-    // ...existing code...
+    // ===== EXPORT =====
+
+    showExportPanel() {
+        const panel = document.getElementById('exportPanel');
+        panel.style.display = 'flex';
+        this.renderExportList();
+    }
+
+    hideExportPanel() {
+        document.getElementById('exportPanel').style.display = 'none';
+        document.getElementById('exportSelectAll').checked = false;
+    }
+
+    renderExportList() {
+        const list = document.getElementById('exportTemplateList');
+        if (this.templates.length === 0) {
+            list.innerHTML = '<p style="color:#666;text-align:center;padding:40px">Chưa có template nào để export.</p>';
+            return;
+        }
+        list.innerHTML = this.templates.map(t => this.renderSelectableItem(t, 'export')).join('');
+
+        list.querySelectorAll('.selectable-template-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (e.target.type === 'checkbox') return;
+                const cb = item.querySelector('input[type="checkbox"]');
+                cb.checked = !cb.checked;
+                item.classList.toggle('selected', cb.checked);
+                this.syncExportSelectAll();
+                this.updateExportCount();
+            });
+            const cb = item.querySelector('input[type="checkbox"]');
+            cb.addEventListener('change', () => {
+                item.classList.toggle('selected', cb.checked);
+                this.syncExportSelectAll();
+                this.updateExportCount();
+            });
+        });
+
+        document.getElementById('exportSelectAll').addEventListener('change', (e) => {
+            list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = e.target.checked;
+                cb.closest('.selectable-template-item').classList.toggle('selected', e.target.checked);
+            });
+            this.updateExportCount();
+        });
+
+        document.getElementById('closeExportPanel').onclick = () => this.hideExportPanel();
+        document.getElementById('exportPanel').addEventListener('click', (e) => {
+            if (e.target.id === 'exportPanel') this.hideExportPanel();
+        });
+        document.getElementById('doExportBtn').onclick = () => this.doExport();
+
+        this.updateExportCount();
+    }
+
+    renderSelectableItem(template, prefix) {
+        const categoryName = this.getCategoryName(template.category);
+        const date = template.createdAt ? new Date(template.createdAt).toLocaleDateString('vi-VN') : '';
+        return `
+            <div class="selectable-template-item" data-id="${template.id}">
+                <input type="checkbox" id="${prefix}-cb-${template.id}">
+                <div class="selectable-item-info">
+                    <div class="selectable-item-title">${this.escapeHtml(template.title)}</div>
+                    <div class="selectable-item-meta">
+                        <span class="template-category category-${template.category}">${this.escapeHtml(categoryName)}</span>
+                        ${date ? `<span style="font-size:12px;color:#999">${date}</span>` : ''}
+                        ${template.favorite ? '<span>⭐</span>' : ''}
+                    </div>
+                    <div class="selectable-item-desc">${this.escapeHtml(template.description || template.content)}</div>
+                </div>
+            </div>
+        `;
+    }
+
+    syncExportSelectAll() {
+        const checkboxes = document.querySelectorAll('#exportTemplateList input[type="checkbox"]');
+        const allChecked = [...checkboxes].every(cb => cb.checked);
+        document.getElementById('exportSelectAll').checked = allChecked;
+    }
+
+    updateExportCount() {
+        const checked = document.querySelectorAll('#exportTemplateList input[type="checkbox"]:checked').length;
+        document.getElementById('exportCountLabel').textContent = `${checked} template được chọn`;
+        document.getElementById('doExportBtn').disabled = checked === 0;
+    }
+
+    doExport() {
+        const selectedIds = new Set(
+            [...document.querySelectorAll('#exportTemplateList input[type="checkbox"]:checked')]
+                .map(cb => cb.closest('.selectable-template-item').dataset.id)
+        );
+        const selected = this.templates.filter(t => selectedIds.has(t.id));
+        const payload = {
+            version: '1.0',
+            exportedAt: new Date().toISOString(),
+            templates: selected
+        };
+        const json = JSON.stringify(payload, null, 2);
+        const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const filename = `chrome-prompts-${date}.json`;
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+        this.hideExportPanel();
+        this.showNotification(`✅ Đã export ${selected.length} template thành ${filename}`);
+    }
+
+    // ===== IMPORT =====
+
+    showImportPanel() {
+        document.getElementById('importStep1').style.display = 'block';
+        document.getElementById('importStep2').style.display = 'none';
+        document.getElementById('importPanel').style.display = 'flex';
+        this.bindImportPanelEvents();
+    }
+
+    hideImportPanel() {
+        document.getElementById('importPanel').style.display = 'none';
+        document.getElementById('importFileInput').value = '';
+    }
+
+    bindImportPanelEvents() {
+        const panel = document.getElementById('importPanel');
+        const fileInput = document.getElementById('importFileInput');
+        const dropZone = document.getElementById('importDropZone');
+
+        document.getElementById('closeImportPanel').onclick = () => this.hideImportPanel();
+        document.getElementById('closeImportPanel2').onclick = () => this.hideImportPanel();
+        document.getElementById('backToImportStep1').onclick = () => {
+            document.getElementById('importStep2').style.display = 'none';
+            document.getElementById('importStep1').style.display = 'block';
+            fileInput.value = '';
+        };
+
+        panel.onclick = (e) => {
+            if (e.target.id === 'importPanel') this.hideImportPanel();
+        };
+
+        fileInput.onchange = (e) => {
+            if (e.target.files[0]) this.handleImportFile(e.target.files[0]);
+        };
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.json')) {
+                this.handleImportFile(file);
+            } else {
+                this.showNotification('Vui lòng chọn file .json hợp lệ!', 'error');
+            }
+        });
+    }
+
+    handleImportFile(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = JSON.parse(e.target.result);
+                let templates = [];
+                if (Array.isArray(data)) {
+                    templates = data;
+                } else if (data.templates && Array.isArray(data.templates)) {
+                    templates = data.templates;
+                } else {
+                    throw new Error('Định dạng JSON không hợp lệ');
+                }
+                if (templates.length === 0) {
+                    this.showNotification('File không có template nào!', 'error');
+                    return;
+                }
+                this.showImportListStep(templates);
+            } catch (err) {
+                this.showNotification('Không thể đọc file: ' + err.message, 'error');
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    showImportListStep(templates) {
+        this.importCandidates = templates;
+        document.getElementById('importStep1').style.display = 'none';
+        document.getElementById('importStep2').style.display = 'block';
+
+        const list = document.getElementById('importTemplateList');
+        list.innerHTML = templates.map((t, i) => this.renderSelectableItem(
+            { ...t, id: t.id || `import-${i}` }, 'import'
+        )).join('');
+
+        // Default: all selected
+        list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = true;
+            cb.closest('.selectable-template-item').classList.add('selected');
+        });
+        document.getElementById('importSelectAll').checked = true;
+
+        list.querySelectorAll('.selectable-template-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (e.target.type === 'checkbox') return;
+                const cb = item.querySelector('input[type="checkbox"]');
+                cb.checked = !cb.checked;
+                item.classList.toggle('selected', cb.checked);
+                this.syncImportSelectAll();
+                this.updateImportCount();
+            });
+            const cb = item.querySelector('input[type="checkbox"]');
+            cb.addEventListener('change', () => {
+                item.classList.toggle('selected', cb.checked);
+                this.syncImportSelectAll();
+                this.updateImportCount();
+            });
+        });
+
+        document.getElementById('importSelectAll').onchange = (e) => {
+            list.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = e.target.checked;
+                cb.closest('.selectable-template-item').classList.toggle('selected', e.target.checked);
+            });
+            this.updateImportCount();
+        };
+
+        document.getElementById('doImportBtn').onclick = () => this.doImport();
+        this.updateImportCount();
+    }
+
+    syncImportSelectAll() {
+        const checkboxes = document.querySelectorAll('#importTemplateList input[type="checkbox"]');
+        const allChecked = checkboxes.length > 0 && [...checkboxes].every(cb => cb.checked);
+        document.getElementById('importSelectAll').checked = allChecked;
+    }
+
+    updateImportCount() {
+        const checked = document.querySelectorAll('#importTemplateList input[type="checkbox"]:checked').length;
+        document.getElementById('importCountLabel').textContent = `${checked} template được chọn`;
+        document.getElementById('doImportBtn').disabled = checked === 0;
+    }
+
+    async doImport() {
+        const items = [...document.querySelectorAll('#importTemplateList input[type="checkbox"]:checked')];
+        const selectedIndices = items.map(cb => {
+            const item = cb.closest('.selectable-template-item');
+            return [...document.querySelectorAll('#importTemplateList .selectable-template-item')].indexOf(item);
+        });
+        const toImport = selectedIndices.map(i => this.importCandidates[i]);
+
+        // Resolve ID conflicts: if an existing template shares the same ID, assign a new one
+        const existingIds = new Set(this.templates.map(t => t.id));
+        const sanitized = toImport.map(t => {
+            const template = { ...t };
+            if (!template.id || existingIds.has(template.id)) {
+                template.id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+            }
+            if (!template.createdAt) template.createdAt = Date.now();
+            if (template.usageCount === undefined) template.usageCount = 0;
+            if (template.lastUsed === undefined) template.lastUsed = 0;
+            return template;
+        });
+
+        try {
+            const result = await chrome.storage.local.get(['promptTemplates']);
+            const existing = result.promptTemplates || [];
+            await chrome.storage.local.set({ promptTemplates: [...existing, ...sanitized] });
+
+            await this.loadTemplates();
+            this.renderTemplates();
+            this.hideImportPanel();
+            this.showNotification(`✅ Đã import ${sanitized.length} template thành công!`);
+        } catch (error) {
+            console.error('Import error:', error);
+            this.showNotification('Có lỗi xảy ra khi import!', 'error');
+        }
+    }
 }
 
 // Initialize manager when DOM is loaded
