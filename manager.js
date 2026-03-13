@@ -115,7 +115,7 @@ class TemplateManager {
         try {
             const response = await chrome.runtime.sendMessage({ action: 'getTemplates' });
             this.templates = response.templates || [];
-            this.filteredTemplates = [...this.templates];
+            this.filteredTemplates = [...this.templates].sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
         } catch (error) {
             console.error('Error loading templates:', error);
             this.templates = [];
@@ -173,6 +173,8 @@ class TemplateManager {
         if (category) {
             filtered = filtered.filter(template => template.category === category);
         }
+
+        filtered.sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
 
         this.filteredTemplates = filtered;
         this.renderTemplates();
@@ -764,7 +766,7 @@ class TemplateManager {
             const index = this.templates.findIndex(t => t.id === template.id);
             if (index !== -1) {
                 this.templates[index] = template;
-                this.filteredTemplates = [...this.templates];
+                this.filteredTemplates = [...this.templates].sort((a, b) => (b.lastUsed || 0) - (a.lastUsed || 0));
             }
         } catch (error) {
             console.error('Error updating template:', error);
